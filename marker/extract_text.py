@@ -1,6 +1,7 @@
 import os
 from typing import Tuple, List, Optional
 
+import fitz as pymupdf
 from spellchecker import SpellChecker
 
 from marker.bbox import correct_rotation
@@ -74,6 +75,30 @@ def get_single_page_blocks(doc, pnum: int, tess_lang: str, spellchecker: Optiona
         # Only select blocks with multiple lines
         if len(block_lines) > 0:
             page_blocks.append(block_obj)
+
+    # Handle links
+    links = page.get_links()
+    for link in links:
+        for block in page_blocks:
+            if not link["from"].intersects(block.bbox):
+                continue
+
+            max_area = -1
+            max_span = None
+            for line in block.lines:
+                for span in line.spans:
+                    # intersect would update rect, so make a copy each time
+                    rect = pymupdf.Rect(link["from"])
+                    intersect = rect.intersect(span.bbox)
+                    if not intersect.is_empty:
+                        area = abs(intersect)
+                        if area > max_area:
+                            max_area = area
+                            max_span = span
+
+            if max_span:
+                max_span.link = link["uri"]
+                break
 
     # If the page was rotated, sort the text again
     if rotation > 0:

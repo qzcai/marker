@@ -61,6 +61,7 @@ class Span(BboxElement):
     descender: Optional[float] = None
     block_type: Optional[str] = None
     selected: bool = True
+    link: Optional[str] = None
 
 
     @field_validator('text')

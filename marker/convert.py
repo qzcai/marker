@@ -10,6 +10,7 @@ from marker.postprocessors.editor import edit_full_text
 from marker.segmentation import detect_document_block_types
 from marker.cleaners.code import identify_code_blocks, indent_blocks
 from marker.cleaners.bullets import replace_bullets
+from marker.cleaners.link import add_link_to_spans
 from marker.markdown import merge_spans, merge_lines, get_full_text
 from marker.schema import Page, BlockType
 from typing import List, Dict, Tuple, Optional
@@ -126,6 +127,9 @@ def convert_single_pdf(
         order_model,
         batch_size=int(settings.ORDERER_BATCH_SIZE * parallel_factor)
     )
+
+    # Add links to spans
+    add_link_to_spans(blocks)
 
     # Fix code blocks
     code_block_count = identify_code_blocks(blocks)
