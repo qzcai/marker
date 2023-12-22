@@ -23,6 +23,10 @@ class Settings(BaseSettings):
         "application/x-fictionbook+xml": "fb2"
     }
 
+    # Blob storage for images
+    AZURE_STORAGE_CONNECTION_STRING: str = ""
+    AZURE_STORAGE_CONTAINER_NAME: str = "images"
+
     # PyMuPDF
     TEXT_FLAGS: int = pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_LIGATURES & ~pymupdf.TEXT_PRESERVE_IMAGES
 

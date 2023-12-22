@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import Tuple, List, Optional
 
 import fitz as pymupdf
@@ -9,6 +10,7 @@ from marker.ocr.page import ocr_entire_page
 from marker.ocr.utils import detect_bad_ocr, font_flags_decomposer
 from marker.settings import settings
 from marker.schema import Span, Line, Block, Page
+from marker.cleaners.image import get_image_block
 from concurrent.futures import ThreadPoolExecutor
 
 os.environ["TESSDATA_PREFIX"] = settings.TESSDATA_PREFIX
@@ -34,15 +36,21 @@ def sort_rotated_text(page_blocks, tolerance=1.25):
 def get_single_page_blocks(doc, pnum: int, tess_lang: str, spellchecker: Optional[SpellChecker] = None, ocr=False) -> Tuple[List[Block], int]:
     page = doc[pnum]
     rotation = page.rotation
+    doc_path_name = f"{os.path.basename(doc.name)}-{uuid.uuid4()}"
 
     if ocr:
         blocks = ocr_entire_page(page, tess_lang, spellchecker)
     else:
-        blocks = page.get_text("dict", sort=True, flags=settings.TEXT_FLAGS)["blocks"]
+        blocks = page.get_text("dict", sort=True, flags=settings.TEXT_FLAGS | pymupdf.TEXT_PRESERVE_IMAGES)["blocks"]
 
     page_blocks = []
     span_id = 0
     for block_idx, block in enumerate(blocks):
+        if block["type"] == 1:
+            block_obj = get_image_block(doc_path_name, page, pnum, block, block_idx)
+            page_blocks.append(block_obj)
+            continue
+
         block_lines = []
         for l in block["lines"]:
             spans = []
