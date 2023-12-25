@@ -31,6 +31,22 @@ app.config['state'] = State()
 start_time = datetime.now()
 
 
+@app.route('/stream', methods=['POST'])
+def stream():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file found in the request'}), 400
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    file_name = temp_file.name
+    request.files['file'].save(file_name)
+
+    model_lst = app.config['state'].model_lst
+    full_text, out_meta = convert_single_pdf(file_name, model_lst)
+    os.remove(file_name)
+
+    return jsonify({'full_text': full_text, 'out_meta': out_meta})
+
+
 @app.route('/convert', methods=['POST'])
 def convert():
     data = request.get_json()
