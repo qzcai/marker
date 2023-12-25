@@ -2,6 +2,7 @@ import os
 import requests
 import socket
 import tempfile
+import threading
 from datetime import datetime
 from flask import Flask, request, jsonify
 from urllib.parse import urlparse
@@ -10,8 +11,23 @@ from marker.convert import convert_single_pdf
 from marker.logger import configure_logging
 from marker.models import load_all_models
 
+
+class State:
+    def __init__(self):
+        self._model_lst = None
+        self._lock = threading.Lock()
+
+    @property
+    def model_lst(self):
+        with self._lock:
+            if self._model_lst is None:
+                self._model_lst = load_all_models()
+        return self._model_lst
+
+
 configure_logging()
 app = Flask(__name__)
+app.config['state'] = State()
 start_time = datetime.now()
 
 
@@ -38,6 +54,7 @@ def convert():
         case 'unknown':
             return jsonify({'error': f'Unknown file path {file_path}'}), 500
 
+    model_lst = app.config['state'].model_lst
     full_text, out_meta = convert_single_pdf(file_name, model_lst, max_pages=max_pages, parallel_factor=parallel_factor)
     if need_delete:
         os.remove(file_name)
@@ -76,6 +93,17 @@ def download_file(url):
         return None
 
 
+@app.route('/warmup', methods=['POST'])
+def warmup():
+    _private_model = app.config['state']._model_lst
+    if _private_model is None:
+        load_start = datetime.now()
+        _ = app.config['state'].model_lst
+        load_time = datetime.now() - load_start
+        return jsonify({'message': f'Models loaded in {str(load_time.seconds)} seconds'})
+    return jsonify({'message': 'Models were already loaded'})
+
+
 @app.route('/health', methods=['GET'])
 def health():
     uptime = datetime.now() - start_time
@@ -85,5 +113,4 @@ def health():
 
 
 if __name__ == "__main__":
-    model_lst = load_all_models()
     app.run()
