@@ -1,6 +1,7 @@
 import fitz as pymupdf
 import magic
-from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.storage.blob import BlobServiceClient, ContentSettings, BlobSasPermissions, generate_blob_sas
+from datetime import datetime, timedelta
 
 from marker.bbox import correct_rotation
 from marker.schema import Span, Line, Block
@@ -17,8 +18,15 @@ def upload_to_azure_blob(image: bytes, blob_name: str):
     # Upload the image
     content_settings = ContentSettings(content_type=magic.from_buffer(image, mime=True))
     blob_client = container_client.upload_blob(name=blob_name, data=image, content_settings=content_settings)
-
-    return blob_client.url
+    sas_token = generate_blob_sas(
+        account_name=blob_service_client.account_name,
+        container_name=container_client.container_name,
+        blob_name=blob_client.blob_name,
+        account_key=blob_service_client.credential.account_key,
+        permission=BlobSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(days=365)
+    )
+    return f"{blob_client.url}?{sas_token}"
 
 
 def get_image_block(doc_path_name: str, page: pymupdf.Page, pnum: int, block: dict, block_idx: int):
