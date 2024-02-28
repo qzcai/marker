@@ -105,7 +105,10 @@ def get_single_page_blocks(doc, pnum: int, tess_lang: str, spellchecker: Optiona
                             max_span = span
 
             if max_span:
-                max_span.link = link["uri"]
+                try:
+                    max_span.link = link["uri"]
+                except KeyError:
+                    pass
                 break
 
     # If the page was rotated, sort the text again
